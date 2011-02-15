@@ -2,7 +2,7 @@
 
 (defpackage :cl-opencv
   (:use #:cl #:cffi)
-  (:export 
+  (:export
    ;; core - basic structures
    ; #:cv-point
    #:cv-size

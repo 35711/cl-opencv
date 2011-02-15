@@ -10,4 +10,3 @@
     :components
     ((:file "package")
      (:file "test" :depends-on ("package"))))))
-  

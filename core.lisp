@@ -9,11 +9,11 @@
 
 ;; CvSize
 ;; We do some heinous kludging here for now. CFFI cannot pass structs by value,
-;; which is almost always how OpenCV uses CvSize. We get around this by 
+;; which is almost always how OpenCV uses CvSize. We get around this by
 ;; treating the CvSize struct as a 64-bit integer, which CFFI can handle (at
 ;; least on some platforms). The correct answer is either to write some glue
 ;; C code to translate structs passed by value to pointers or to figure out
-;; how lispbuilder-sdl deals with the SDL_Color struct (it doesn't seem to 
+;; how lispbuilder-sdl deals with the SDL_Color struct (it doesn't seem to
 ;; use glue code).
 (defstruct cv-size (width 0) (height 0))
 
@@ -24,7 +24,7 @@
 (defun int64-to-cv-size (n)
   "Unpacks the CvSize struct S from a 64-bit integer to a Lisp cv-size struct."
   (make-cv-size :width (logand n #x00000000ffffffff)
-		:height (ash n -32)))
+                :height (ash n -32)))
 
 ;; CvRect
 ;; More kludging Lisp structs to 64-bit integers which are really C structs.
@@ -33,7 +33,7 @@
 (defun cv-rect-to-int64s (r)
   "Convert a cv-rect struct R into two 64-bit integers."
   (let ((i1 (+ (cv-rect-x r) (ash (cv-rect-y r) 32)))
-	(i2 (+ (cv-rect-width r) (ash (cv-rect-height r) 32))))
+        (i2 (+ (cv-rect-width r) (ash (cv-rect-height r) 32))))
     (list i1 i2)))
 
 ;; CvMat

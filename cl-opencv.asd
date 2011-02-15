@@ -7,8 +7,8 @@
   :description "OpenCV bindings for SBCL"
   :depends-on (:cffi)
   :serial t
-  :components ((:file "package") 
-	       (:file "cl-opencv" :depends-on ("package"))
-	       (:file "core" :depends-on ("package" "cl-opencv"))
-	       (:file "imgproc" :depends-on ("package" "cl-opencv" "core"))
-	       (:file "highgui" :depends-on ("package" "cl-opencv" "core"))))
+  :components ((:file "package")
+               (:file "cl-opencv" :depends-on ("package"))
+               (:file "core" :depends-on ("package" "cl-opencv"))
+               (:file "imgproc" :depends-on ("package" "cl-opencv" "core"))
+               (:file "highgui" :depends-on ("package" "cl-opencv" "core"))))

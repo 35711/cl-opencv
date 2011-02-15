@@ -34,7 +34,7 @@
   (max-value :double)
   (threshold-type :int))
 
-;; double cvThreshold(const CvArr* src, CvArr* dst, double threshold, 
+;; double cvThreshold(const CvArr* src, CvArr* dst, double threshold,
 ;;                    double maxValue, int thresholdType)
 (defun threshold (src dest threshold max-value threshold-type)
   "Applies a fixed-level threshold to array elements. SRC is the
@@ -42,7 +42,7 @@ source array and DEST is the target array. THRESHOLD is the threshold
 value and MAX-VALUE is the 'on' value for binary
 thresholding. THRESHOLD-TYPE is the type of thresholding to be done."
   (%threshold src dest (coerce threshold 'double-float)
-	      (coerce max-value 'double-float) threshold-type))
+              (coerce max-value 'double-float) threshold-type))
 
 
 

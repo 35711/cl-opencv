@@ -33,8 +33,8 @@
 switch as determined by FLAGS."
   (%convert-image src dest flags))
 
-;; TODO int cvCreateTrackbar(const char* trackbarName, 
-;;                           const char* windowName, int* value, int count, 
+;; TODO int cvCreateTrackbar(const char* trackbarName,
+;;                           const char* windowName, int* value, int count,
 ;;                           CvTrackbarCallback onChange)
 
 ;; void cvDestroyAllWindows(void)
@@ -82,10 +82,10 @@ contents. Note that current OpenCV only supports +WINDOW-AUTOSIZE+."
   (width :int)
   (height :int))
 
-;; TODO void cvSetMouseCallback(const char* windowName, 
+;; TODO void cvSetMouseCallback(const char* windowName,
 ;;                              CvMouseCallback onMouse, void* param=NULL)
 
-;; TODO void cvSetTrackbarPos(const char* trackbarName, 
+;; TODO void cvSetTrackbarPos(const char* trackbarName,
 ;;                            const char* windowName, int pos)
 
 ;; void cvShowImage(const char* name, const CvArr* image)
@@ -97,7 +97,7 @@ contents. Note that current OpenCV only supports +WINDOW-AUTOSIZE+."
 ;; int cvWaitKey(int delay=0)
 (defcfun ("cvWaitKey" %wait-key) :int
   (delay :int))
- 
+
 (defun wait-key (&optional (delay 0))
   "Wait up to DELAY milliseconds for a key press. Return the key press
 if any. If DELAY is zero, this function doesn't return until a key is
@@ -110,7 +110,7 @@ pressed."
 ;;; Reading and Writing Images and Video
 
 ;; Color mode constants for cvLoadImage.
-(defanonenum 
+(defanonenum
   (+load-image-unchanged+ -1)
   +load-image-grayscale+
   +load-image-color+
@@ -222,8 +222,8 @@ CAPTURE to the value VALUE."
 ;; TODO CV_FOURCC
 
 
-;; TODO CvVideoWriter* cvCreateVideoWriter(const char* filename, int fourcc, 
-;;                                         double fps, CvSize frame_size, 
+;; TODO CvVideoWriter* cvCreateVideoWriter(const char* filename, int fourcc,
+;;                                         double fps, CvSize frame_size,
 ;;                                         int is_color=1)
 
 ;; TODO void cvReleaseVideoWriter(CvVideoWriter** writer)
