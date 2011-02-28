@@ -44,6 +44,16 @@ thresholding. THRESHOLD-TYPE is the type of thresholding to be done."
   (%threshold src dest (coerce threshold 'double-float)
               (coerce max-value 'double-float) threshold-type))
 
+;; void cvCvtColor(const CvArr* src, CvArr* dst, int code)
+(defcfun ("cvCvtColor" %convert-color) :void
+  (src cv-array)
+  (dst cv-array)
+  (code :int))
+
+(defun cvt-color (src dst code)
+  "Converts input array pixels from one color space to another."
+  (%convert-color src dst code))
+
 
 
 ;;; Structural Analysis and Shape Descriptors

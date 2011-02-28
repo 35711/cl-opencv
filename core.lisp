@@ -39,6 +39,9 @@
 ;; CvMat
 (defctype cv-matrix :pointer)
 
+;; CvMatND
+(defctype cv-matrix-nd :pointer)
+
 ;; IplImage
 (defanonenum
   (+ipl-depth-1u+ 1)
@@ -52,6 +55,9 @@
 
 (defctype ipl-image :pointer)
 
+;; CvPoint
+(defctype cv-point :pointer)
+
 ;; CvArr
 (defctype cv-array :pointer)
 
@@ -59,6 +65,17 @@
 
 
 ;;; Operations on Arrays
+
+;; void cvConvertScale(const CvArr* src, CvArr* dst, double scale=1, double shift=0)
+(defcfun ("cvConvertScale" %convert-scale) :void
+  (src cv-array)
+  (dest cv-array)
+  (scale :double)
+  (shift :double))
+
+(defun convert-scale (src dest &optional (scale 1.0) (shift 0.0))
+  "Performs a linear transformation on every SRC array element."
+  (%convert-scale src dest scale shift))
 
 ;; void cvCopy(const CvArr* src, CvArr* dst, const CvArr* mask=NULL)
 (defcfun ("cvCopy" %copy) :void
@@ -83,6 +100,15 @@ channel, and CHANNELS number of channels."
   (let ((nsize (cv-size-to-int64 size)))
     (%create-image nsize depth channels)))
 
+;; int cvGetDims(const CvArr* arr, int* sizes=NULL)
+(defcfun ("cvGetDims" %get-dims) :int
+  (arr cv-array)
+  (sizes :pointer))
+
+(defun get-dims (arr &optional (sizes (null-pointer)))
+  "Retrieves number of ARR dimensions and optionally their sizes."
+  (%get-dims arr sizes))
+
 ;; CvSize cvGetSize(const CvArr* arr)
 (defcfun ("cvGetSize" %get-size) :int64
   (arr cv-array))
@@ -92,6 +118,33 @@ channel, and CHANNELS number of channels."
 dimensions."
   (let ((nsize (%get-size arr)))
     (int64-to-cv-size nsize)))
+
+;; CvMat* cvGetSubRect(const CvArr* arr, CvMat* submat, CvRect rect)
+(defcfun ("cvGetSubRect" %get-sub-rect) cv-matrix
+  (arr cv-array)
+  (submat cv-matrix)
+  (rect-i1 :int64)
+  (rect-i2 :int64))
+
+(defun get-sub-rect (arr submat rect)
+  "Makes a new matrix from RECT subrectangle or input array."
+  (let ((irect (cv-rect-to-int64s rect)))
+    (%get-sub-rect arr submat (first irect) (second irect))))
+
+;; void cvMinMaxLoc(const CvArr* arr, double* min_val, double* max_val,
+;; CvPoint* min_loc=NULL, CvPoint* max_loc=NULL, const CvArr* mask=NULL)
+(defcfun ("cvMinMaxLOC" %min-max-loc) :void
+  (arr cv-array)
+  (min-val :pointer)
+  (max-val :pointer)
+  (min-loc cv-point)
+  (max-loc cv-point)
+  (mask cv-array))
+
+(defun mix-max-loc (arr min-val max-val &optional (min-loc (null-pointer))
+                    (max-loc (null-pointer)) (mask (null-pointer)))
+  "Finds global minimum and maximum in ARR and their positions."
+  (%min-max-loc arr min-val max-val min-loc max-loc mask))
 
 ;; void cvReleaseImage(IplImage** image)
 (defcfun ("cvReleaseImage" %release-image) :void
@@ -119,3 +172,27 @@ dimensions."
   "Set the ROI of IMAGE to the rectangle RECT."
   (let ((irect (cv-rect-to-int64s rect)))
     (%set-image-roi image (first irect) (second irect))))
+
+;; void cvSplit(const CvArr* src, CvArr* dst0, CvArr* dst1,
+;; CvArr* dst2, CvArr* dst3)
+(defcfun ("cvSplit" %split) :void
+  (src cv-array)
+  (dst0 cv-array)
+  (dst1 cv-array)
+  (dst2 cv-array)
+  (dst3 cv-array))
+
+(defun split (src d0 d1 d2 d3)
+  "Splits a multi-channel array into a set of single-channel
+arrays or extracts a particular color plane."
+  (%split src d0 d1 d2 d3))
+
+;;; Operations on Matrices
+
+;; CvMatND* cvCloneMatND(const CvMatND* mat)
+(defcfun ("cvCloneMatND" %clone-mat-nd) cv-matrix-nd
+  (mat cv-matrix-nd))
+
+(defun clone-mat-nd (matrix)
+  "Creates a copy of MATRIX."
+  (%clone-mat-nd matrix))

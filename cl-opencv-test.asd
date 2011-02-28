@@ -9,4 +9,5 @@
   ((:module "test"
     :components
     ((:file "package")
+     (:file "camshift" :depends-on ("package"))
      (:file "test" :depends-on ("package"))))))
