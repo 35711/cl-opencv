@@ -194,5 +194,13 @@ arrays or extracts a particular color plane."
   (mat cv-matrix-nd))
 
 (defun clone-mat-nd (matrix)
-  "Creates a copy of MATRIX."
+  "Creates a copy of n-dimensional MATRIX."
   (%clone-mat-nd matrix))
+
+;; CVMat* cvCloneMat(const CvMat* mat)
+(defcfun ("cvCloneMat" %clone-mat) cv-matrix
+  (mat cv-matrix))
+
+(defun clone-mat (matrix)
+  "Creates a copy of MATRIX."
+  (%clone-mat matrix))
