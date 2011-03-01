@@ -1,5 +1,10 @@
 (in-package :verrazano)
 
+;; Note that I needed to patch verrazano for this to work.
+;; Two patches were required, one from _3b and a nasty and vicious hack I wrote.
+;; _3b: http://paste.lisp.org/display/120074#1
+;; Mine: http://paste.lisp.org/display/120074#2
+
 (defvar *strip-cv* (cl-ppcre:create-scanner "(^cv|CV|Cv?)"))
 
 (defun go-go-go ()
