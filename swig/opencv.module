@@ -1,0 +1,9 @@
+%module "opencv"
+
+%feature("intern_function","1");
+
+%include "/usr/include/opencv2/core/types_c.h"
+%include "/usr/include/opencv2/core/core_c.h"
+%include "/usr/include/opencv2/imgproc/types_c.h"
+%include "/usr/include/opencv2/imgproc/imgproc_c.h"
+%include "/usr/include/opencv2/highgui/highgui_c.h"
