@@ -5,7 +5,7 @@
 ;; _3b: http://paste.lisp.org/display/120074#1
 ;; Mine: http://paste.lisp.org/display/120074#2
 
-(defvar *strip-cv* (cl-ppcre:create-scanner "(^cv|CV|Cv?)"))
+(defvar *cv-scanner* (cl-ppcre:create-scanner "(^cv|CV|Cv?)"))
 
 (defun go-go-go ()
   (generate-binding
