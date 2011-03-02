@@ -3,6 +3,38 @@
 
 (in-package :opencv-verrazano)
 
+;;;;; load-libs
+
+(define-foreign-library opencv-core
+  (:darwin (:or "libopencv_core.2.2.0.dylib" "libopencv_core.dylib"))
+  (:unix (:or "libcore.so.2.1.0" "libcore.so" "libopencv_core.so"))
+  (t (:default "libcore")))
+
+(define-foreign-library opencv-imgproc
+  (:darwin (:or "libopencv_imgproc.2.2.0.dylib" "libopencv_imgproc.dylib"))
+  (:unix (:or "libimgproc.so.2.1.0" "libimgproc.so" "libopencv_imgproc.so"))
+  (t (:default "libimgproc")))
+
+(define-foreign-library opencv-highgui
+  (:darwin (:or "libopencv_highgui.2.2.0.dylib" "libopencv_highgui.dylib"))
+  (:unix (:or "libhighgui.so.2.1.0" "libhighgui.so" "libopencv_highgui.so"))
+  (t (:default "libhighgui")))
+
+(define-foreign-library opencv-video
+  (:darwin (:or "libopencv_video.2.2.0.dylib" "libopencv_video.dylib"))
+  (:unix (:or "libvideo.so.2.1.0" "libvideo.so" "libopencv_video.so"))
+  (t (:default "libvideo")))
+
+(defun load-opencv-libs ()
+  (cond ((member :darwin *features*)
+         (pushnew #P"/opt/local/lib/" cffi:*foreign-library-directories*))
+        ((member :linux *features*)
+         (pushnew #P"/usr/lib/" cffi:*foreign-library-directories*)))
+  (use-foreign-library opencv-core)
+  (use-foreign-library opencv-imgproc)
+  (use-foreign-library opencv-highgui)
+  (use-foreign-library opencv-video))
+
 ;;;;; helpers
 
 (defmacro defanonenum (&body enums)
@@ -78,7 +110,11 @@
 ;; object filled with the appropriate values.
 ;; #define CV_RGB( r, g, b )  cvScalar( (b), (g), (r), 0 )
 
+
+
 ;;;;; core/
+
+
 
 ;; Returns width and height of array in elements
 ;; CvSize cvGetSize(const CvArr* arr)
@@ -181,6 +217,8 @@
   (line-type :int)
   (shift :int))
 
+;; TODO: This is throwing "undefined alien" style-warnings
+;; because it's inlined. Fix it.
 ;; void cvEllipseBox(CvArr* img, CvBox2D box, CvScalar color,
 ;;                  int thickness CV_DEFAULT(1),
 ;;                  int line_type CV_DEFAULT(8),
@@ -193,19 +231,23 @@
   (line-type :int)
   (shift :int))
 
+
+
 ;;;;; highgui/
+
+
 
 ;; create window
 ;; int cvNamedWindow(const char* name, int flags CV_DEFAULT(CV_WINDOW_AUTOSIZE))
 (defcfun ("cvNamedWindow" named-window) :int
-  (name :pointer)
+  (name :string)
   (flags :int))
 
 ;; display image within window (highgui windows remember
 ;; their content)
 ;; void cvShowImage(const char* name, const CvArr* image)
 (defcfun ("cvShowImage" show-image) :void
-  (name :pointer)
+  (name :string)
   (image :pointer))
 
 ;; wait for key event infinitely (delay<=0) or for
@@ -219,7 +261,7 @@
 ;;                         CvMouseCallback on_mouse,
 ;;                         void* param CV_DEFAULT(NULL))
 (defcfun ("cvSetMouseCallback" set-mouse-callback) :void
-  (window-name :pointer)
+  (window-name :string)
   (on-mouse mouse-callback)
   (param (:pointer :void)))
 
@@ -229,7 +271,22 @@
 (defcfun ("cvQueryFrame" query-frame) :pointer
   (capture :pointer))
 
+;; start capturing frames from video file
+;; CvCapture* cvCreateFileCapture(const char* filename)
+(defcfun ("cvCreateFileCapture" create-file-capture) :pointer
+  (filename :string))
+
+;; start capturing frames from camera:
+;; index = camera_index + domain_offset (CV_CAP_*)
+;; CvCapture* cvCreateCameraCapture(int index)
+(defcfun ("cvCreateCameraCapture" create-camera-capture) :pointer
+  (index :int))
+
+
+
 ;;;;; imgproc/
+
+
 
 ;; Converts input array pixels from one color space to another
 ;; void cvCvtColor(const CvArr* src, CvArr* dst, int code)
@@ -268,7 +325,11 @@
   (accumulate :int)
   (mask :pointer))
 
+
+
 ;;;;; tracking/
+
+
 
 ;; int cvCamShift(const CvArr* prob_image, CvRect window,
 ;;                CvTermCriteria criteria, CvConnectedComp* comp,
