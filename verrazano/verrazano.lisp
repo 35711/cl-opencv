@@ -103,7 +103,8 @@
   (+event-lbuttondown+ 1)
   (+event-lbuttonup+ 4)
   (+bgr-to-hsv+ 40)
-  (+hsv-to-bgr+ 54))
+  (+hsv-to-bgr+ 54)
+  (+window-autosize+ 1))
 
 ;; uh-oh?
 ;; TODO: Should construct a function rgb which returns a scalar
@@ -243,6 +244,11 @@
   (name :string)
   (flags :int))
 
+;; destroy window and all the trackers associated with it
+;; void cvDestroyWindow(const char* name)
+(defcfun ("cvDestroyWindow" destroy-window) :void
+  (name :string))
+
 ;; display image within window (highgui windows remember
 ;; their content)
 ;; void cvShowImage(const char* name, const CvArr* image)
@@ -281,6 +287,11 @@
 ;; CvCapture* cvCreateCameraCapture(int index)
 (defcfun ("cvCreateCameraCapture" create-camera-capture) :pointer
   (index :int))
+
+;; stop capturing/reading and free resources
+;; void cvReleaseCapture(CvCapture** capture)
+(defcfun ("cvReleaseCapture" release-capture) :void
+  (capture :pointer))
 
 
 
