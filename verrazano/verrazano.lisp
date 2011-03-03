@@ -299,9 +299,14 @@
 (defmacro with-video ((name source) &body body)
   "Bind NAME to SOURCE and execute BODY ensuring that any
 resources used are released."
-  `(let ((,name ,source))
-     (unwind-protect (progn ,@body)
-       (release-capture ,name))))
+  (let ((capture-ptr (gensym)))
+    `(let ((,name ,source))
+       (unwind-protect (progn ,@body)
+         ;; release-capture takes a CvCapture** whereas
+         ;; name is a CvCapture* necessitating this tomfoolery
+         (with-foreign-object (,capture-ptr :pointer)
+           (setf (mem-ref ,capture-ptr :pointer) ,name)
+           (release-capture ,capture-ptr))))))
 
 
 

@@ -3,10 +3,6 @@
 (in-package :opencv-verrazano)
 
 ;;;; TODO
-;; Fix release-capture/with-video.
-;;; create-camera-capture returns CvCapture*, release-capture takes CvCapture**
-;;; so we can't just pass in the return value of create-camera-capture.
-;;; We have to hand over a pointer to the pointer. Lame.
 ;; Add with-output/window macro?
 ;; Figure out why wait-key won't work. Maybe just use trivial-raw-io?
 
