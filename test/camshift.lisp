@@ -2,32 +2,24 @@
 
 (in-package :opencv-verrazano)
 
-(defparameter *video* nil
-  "The video input to be processed.")
-(defparameter *output* nil
-  "The output destination of processed video.")
-(defparameter *window-name* "Camshift Demo")
+;;;; TODO
+;; Fix release-capture/with-video.
+;;; create-camera-capture returns CvCapture*, release-capture takes CvCapture**
+;;; so we can't just pass in the return value of create-camera-capture.
+;;; We have to hand over a pointer to the pointer. Lame.
+;; Add with-output/window macro?
+;; Figure out why wait-key won't work. Maybe just use trivial-raw-io?
 
-;; TODO: Source should be a seq with keyword naming source as
-;; first element (i.e. :webcam, :stream, :file) and data as second
-;; (i.e. 0, "http://...", "/home/$user/...")
-(defun init (&key (source :webcam))
-  (load-opencv-libs)
-  (if (eql source :webcam)
-      (setf *video* (create-camera-capture 0))
-      (format t "Only webcam input supported at this time.~%"))
-  (setf *output* (named-window *window-name* +window-autosize+))
+(defun show-camera (&key (device-id 0) (window-name "Camshift Demo"))
+  (with-video (camera (create-camera-capture device-id))
+    (let ((window (named-window window-name +window-autosize+)))
+      (format t "~%Keys:~%    q then Enter - Quit~%To initialize tracking, ~
+click the left mouse button and drag to select your target.")
   ;(set-mouse-callback "Camshift Demo" (callback on-mouse))
   ;; TODO: Add object for mouse state (drag-start, tracking-window)?
-  (format t "~%Keys:~%    ESC - Quit~%To initialize tracking, ~
-click the left mouse button and drag to select your target."))
-
-(defun main ()
-  (init)
-  (loop for key = (mod (wait-key 7) 256) until (= key 27) do
-       (format t "It works!~%"))
-  (destroy-window *window-name*)
-  (release-capture *video*))
+      (loop until (char= #\q (read-char)) do
+           (show-image window (query-frame camera)))
+      (destroy-window window-name))))
 
 ;; TODO!
 ;(defcallback on-mouse ())

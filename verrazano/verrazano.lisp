@@ -25,15 +25,14 @@
   (:unix (:or "libvideo.so.2.1.0" "libvideo.so" "libopencv_video.so"))
   (t (:default "libvideo")))
 
-(defun load-opencv-libs ()
-  (cond ((member :darwin *features*)
-         (pushnew #P"/opt/local/lib/" cffi:*foreign-library-directories*))
-        ((member :linux *features*)
-         (pushnew #P"/usr/lib/" cffi:*foreign-library-directories*)))
-  (use-foreign-library opencv-core)
-  (use-foreign-library opencv-imgproc)
-  (use-foreign-library opencv-highgui)
-  (use-foreign-library opencv-video))
+(cond ((member :darwin *features*)
+       (pushnew #P"/opt/local/lib/" cffi:*foreign-library-directories*))
+      ((member :linux *features*)
+       (pushnew #P"/usr/lib/" cffi:*foreign-library-directories*)))
+(use-foreign-library opencv-core)
+(use-foreign-library opencv-imgproc)
+(use-foreign-library opencv-highgui)
+(use-foreign-library opencv-video)
 
 ;;;;; helpers
 
@@ -232,6 +231,11 @@
   (line-type :int)
   (shift :int))
 
+;; Releases IPL image header and data
+;; void cvReleaseImage(IplImage** image)
+(defcfun ("cvReleaseImage" release-image) :void
+  (image :pointer))
+
 
 
 ;;;;; highgui/
@@ -256,8 +260,7 @@
   (name :string)
   (image :pointer))
 
-;; wait for key event infinitely (delay<=0) or for
-;; "delay" milliseconds
+;; wait for key event infinitely (delay<=0) or for "delay" milliseconds
 ;; int cvWaitKey(int delay CV_DEFAULT(0))
 (defcfun ("cvWaitKey" wait-key) :int
   (delay :int))
@@ -292,6 +295,13 @@
 ;; void cvReleaseCapture(CvCapture** capture)
 (defcfun ("cvReleaseCapture" release-capture) :void
   (capture :pointer))
+
+(defmacro with-video ((name source) &body body)
+  "Bind NAME to SOURCE and execute BODY ensuring that any
+resources used are released."
+  `(let ((,name ,source))
+     (unwind-protect (progn ,@body)
+       (release-capture ,name))))
 
 
 
