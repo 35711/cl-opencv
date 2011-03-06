@@ -3,7 +3,30 @@
 
 (in-package :opencv-verrazano)
 
+
+;;;;; NOTES
+
+
+;;; We actually can handle structs by value if needed with
+;;; FSBV (Foreign Structures By Value), available through quicklisp.
+;;; It adds a requirement on libffi and fails to build on my system
+;;; because it can't find the ffi.h file to grovel, so libffi-unix.lisp
+;;; may need patching. TODO?
+
+;; Takes at least one passed-by-value struct
+; cvCreateImage create-image
+; cvGetSubRect get-sub-rect
+; cvRectangle rectangle
+; cvEllipseBox ellipse-box
+; cvSetMouseCallback set-mouse-callback
+; cvCamShift %camshift
+
+;; Returns a struct (not a pointer to struct)
+; cvGetSize get-size
+
+
 ;;;;; load-libs
+
 
 (define-foreign-library opencv-core
   (:darwin (:or "libopencv_core.2.2.0.dylib" "libopencv_core.dylib"))
@@ -53,7 +76,9 @@
   `(foreign-funcall-pointer (vtable-lookup ,pobj ,indx ,coff) nil
                             ,@body))
 
-;; types
+
+;;;;; types
+
 
 (defcstruct size
   (width :int)
@@ -92,7 +117,9 @@
   (max-iter :int)
   (epsilon :double))
 
-;; enums
+
+;;;;; enums
+
 
 (defanonenum
   (+hist-array+ 0)
@@ -111,9 +138,7 @@
 ;; #define CV_RGB( r, g, b )  cvScalar( (b), (g), (r), 0 )
 
 
-
 ;;;;; core/
-
 
 
 ;; Returns width and height of array in elements
@@ -237,9 +262,7 @@
   (image :pointer))
 
 
-
 ;;;;; highgui/
-
 
 
 ;; create window
@@ -248,13 +271,13 @@
   (name :string)
   (flags :int))
 
+;; TODO: In testing the window frame grays out but stays around. What gives?
 ;; destroy window and all the trackers associated with it
 ;; void cvDestroyWindow(const char* name)
 (defcfun ("cvDestroyWindow" destroy-window) :void
   (name :string))
 
-;; display image within window (highgui windows remember
-;; their content)
+;; display image within window (highgui windows remember their content)
 ;; void cvShowImage(const char* name, const CvArr* image)
 (defcfun ("cvShowImage" show-image) :void
   (name :string)
@@ -308,10 +331,15 @@ resources used are released."
            (setf (mem-ref ,capture-ptr :pointer) ,name)
            (release-capture ,capture-ptr))))))
 
+(defmacro with-window ((name size) &body body)
+  (let ((window (gensym)))
+    `(let ((,window (named-window ,name ,size)))
+       (declare (ignore ,window))
+       (unwind-protect (progn ,@body)
+         (destroy-window ,name)))))
 
 
 ;;;;; imgproc/
-
 
 
 ;; Converts input array pixels from one color space to another
@@ -352,9 +380,7 @@ resources used are released."
   (mask :pointer))
 
 
-
 ;;;;; tracking/
-
 
 
 ;; int cvCamShift(const CvArr* prob_image, CvRect window,
