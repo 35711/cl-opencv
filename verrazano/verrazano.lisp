@@ -289,6 +289,7 @@
   (delay :int))
 
 ;; assign callback for mouse events
+;; callbacks should take 4 ints (event, x, y, flags) and a void*
 ;; void cvSetMouseCallback(const char* window_name,
 ;;                         CvMouseCallback on_mouse,
 ;;                         void* param CV_DEFAULT(NULL))
@@ -378,6 +379,17 @@ resources used are released."
   (hist :pointer)
   (accumulate :int)
   (mask :pointer))
+
+;; Creates new histogram
+;; CvHistogram* cvCreateHist(int dims, int* sizes, int type,
+;;                           float** ranges CV_DEFAULT(NULL),
+;;                           int uniform CV_DEFAULT(1));
+(defcfun ("cvCreateHist" create-hist) :pointer
+  (dims :int)
+  (sizes (:pointer :int))
+  (type :int)
+  (ranges :pointer)
+  (uniform :int))
 
 
 ;;;;; tracking/
