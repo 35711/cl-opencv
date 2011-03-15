@@ -133,6 +133,14 @@
   (max-iter :int)
   (epsilon :double))
 
+(fsbv:defcstruct mat
+  (type :int)
+  (step :int)
+  (refcount :pointer)
+  (data :pointer)
+  (rows :int)
+  (cols :int))
+
 (fsbv:defcstruct mat-nd
   (type :int)
   (dims :int)
@@ -223,10 +231,18 @@
 ;; Makes a new matrix from <rect> subrectangle of input array.
 ;; No data is copied
 ;; CvMat* cvGetSubRect(const CvArr* arr, CvMat* submat, CvRect rect)
-(fsbv:defcfun ("cvGetSubRect" get-sub-rect) :pointer
+(fsbv:defcfun ("cvGetSubRect" %get-sub-rect) :pointer
   (arr :pointer)
   (submat :pointer)
   (rect rect))
+
+(defun get-sub-rect (arr rect)
+  ;; TODO: There may be two problems with w-f-o use.
+  ;; 1) If the stuff is deallocated at the end of the function
+  ;; before we get to use it. 2) If it can't support structures
+  ;; like 'mat, 'connected-comp, 'box-2d, etc.
+  (with-foreign-object (submat 'mat)
+    (%get-sub-rect arr submat rect)))
 
 ;; Finds global minimum, maximum and their positions
 ;; void cvMinMaxLoc(const CvArr* arr, double* min_val, double* max_val,
@@ -296,8 +312,8 @@
   (line-type :int)
   (shift :int))
 
-(defun rectangle (img pt1 pt2 color thickness
-                  &optional (line-type 0) (shift 0))
+(defun rectangle (img pt1 pt2 color &optional
+                  (thickness 1) (line-type 0) (shift 0))
   (%rectangle img pt1 pt2 color thickness line-type shift))
 
 ;; void cvEllipseBox(CvArr* img, CvBox2D box, CvScalar color,
