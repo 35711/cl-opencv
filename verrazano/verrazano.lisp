@@ -300,11 +300,6 @@
                   &optional (line-type 0) (shift 0))
   (%rectangle img pt1 pt2 color thickness line-type shift))
 
-;; TODO: This is throwing "undefined alien" style-warnings
-;; because it's inlined. Fix it. (later) Actually it's worse
-;; than that. This errors completely when defined with
-;; fsbv:defcfun but that's exactly what we need since it
-;; takes structures by value... uh-oh...
 ;; void cvEllipseBox(CvArr* img, CvBox2D box, CvScalar color,
 ;;                  int thickness CV_DEFAULT(1),
 ;;                  int line_type CV_DEFAULT(8),
@@ -325,7 +320,7 @@
 ;; CvScalar cvScalar(double val0, double val1 CV_DEFAULT(0),
 ;;                   double val2 CV_DEFAULT(0),
 ;;                   double val3 CV_DEFAULT(0))
-(defcfun ("cvScalar" scalar) scalar
+(fsbv:defcfun ("cvScalar" scalar) scalar
   (val1 :double)
   (val2 :double)
   (val3 :double)
