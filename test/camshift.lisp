@@ -11,8 +11,6 @@
 (in-package :opencv-verrazano)
 
 ;; TODO
-; Fix CREATE-HIST.
-; Fix GET-SUB-RECT, RECTANGLE and CALC-ARR-BACK-PROJECT calls.
 ; TEST TEST TEST!
 ; Finish and start using the cv-test package?
 
@@ -28,7 +26,7 @@
 
 (defparameter *camshift-state* (make-instance 'camshift-state))
 
-; (defparameter *hist* (create-hist 1 180 +hist-array+ #(0 180)))
+(defparameter *hist* (create-hist 1 180 +hist-array+))
 
 (defcallback on-mouse :void ((event :int) (x :int) (y :int)
                              (flags :int) (param :pointer))

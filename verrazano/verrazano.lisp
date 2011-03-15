@@ -494,13 +494,11 @@ resources used are released."
   (ranges :pointer)
   (uniform :int))
 
-(defun create-hist (dims sizes type ranges &optional (uniform 1))
-  (with-foreign-objects ((sizes-ptr :int)
-                         (ranges-ptr :float (length ranges)))
+(defun create-hist (dims sizes type &optional
+                    (ranges (null-pointer)) (uniform 1))
+  (with-foreign-object (sizes-ptr :int)
     (setf (mem-ref sizes-ptr :int) sizes)
-    (dotimes (i (length ranges))
-      (setf (mem-aref ranges-ptr :float i) (aref ranges i)))
-    (%create-hist dims sizes-ptr type ranges-ptr uniform)))
+    (%create-hist dims sizes-ptr type ranges uniform)))
 
 
 ;;;;; tracking/
