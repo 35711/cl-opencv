@@ -1,3 +1,11 @@
+;; (ql:quickload '(cffi fsbv))
+;; I patched fsbv's libffi-unix.lisp to point to libffi like so:
+;;#-darwin
+;;(cc-flags "-I/usr/lib/libffi-3.0.9/include/")
+
+;; This is obviously brittle. Where do debian et al put the header?
+
+
 (defpackage :opencv-verrazano
   (:use :cl :cffi))
 
@@ -9,21 +17,28 @@
 
 ;;; We actually can handle structs by value if needed with
 ;;; FSBV (Foreign Structures By Value), available through quicklisp.
-;;; It adds a requirement on libffi and fails to build on my system
-;;; because it can't find the ffi.h file to grovel, so libffi-unix.lisp
-;;; may need patching. TODO?
+;;; It adds a requirement on libffi and needed a patch on my system
+;;; to help if find the libffi headers or it wouldn't build.
 
 ;; Takes at least one passed-by-value struct
-; cvCreateImage create-image
-; cvGetSubRect get-sub-rect
-; cvRectangle rectangle
-; cvEllipseBox ellipse-box
-; cvSetMouseCallback set-mouse-callback
-; cvCamShift %camshift
+; cvCreateImage create-image takes a CvSize
+; cvGetSubRect get-sub-rect takes a CvRect
+; cvCamShift %camshift takes CvTermCriteria and CvRect
+; cvRectangle rectangle takes CvPoint and CvScalar
+; cvEllipseBox ellipse-box takes CvBox2D and CvScalar
+; cvSetMouseCallback set-mouse-callback takes CvMouseCallback
+; // But CvMouseCallback is a void*. Does this count?
 
 ;; Returns a struct (not a pointer to struct)
-; cvGetSize get-size
+; cvGetSize get-size returns a CvSize
+; cvScalar scalar returns a CvScalar
 
+;; Undefined alien (i.e. CV_INLINE) whiners
+; cvScalar
+; cvEllipseBox
+
+;; TODO:
+; Document the lisp wrappers that use with-foreign-*...
 
 ;;;;; load-libs
 
@@ -80,11 +95,11 @@
 ;;;;; types
 
 
-(defcstruct size
+(fsbv:defcstruct size
   (width :int)
   (height :int))
 
-(defcstruct rect
+(fsbv:defcstruct rect
   (x :int)
   (y :int)
   (width :int)
@@ -92,30 +107,51 @@
 
 (defctype mouse-callback :pointer)
 
-(defcstruct point
+(fsbv:defcstruct point
   (x :int)
   (y :int))
 
-(defcstruct scalar
+(fsbv:defcstruct scalar
+  ;; b, g, r, alpha
   (val :double :count 4))
 
-(defcstruct point-2d-32f
+(fsbv:defcstruct point-2d-32f
   (x :float)
   (y :float))
 
-(defcstruct size-2d-32f
+(fsbv:defcstruct size-2d-32f
   (width :float)
   (height :float))
 
-(defcstruct box-2d
+(fsbv:defcstruct box-2d
   (center point-2d-32f)
   (size size-2d-32f)
   (angle :float))
 
-(defcstruct term-criteria
+(fsbv:defcstruct term-criteria
   (type :int)
   (max-iter :int)
   (epsilon :double))
+
+(fsbv:defcstruct mat-nd
+  (type :int)
+  (dims :int)
+  (refcount :pointer)
+  (data :pointer)
+  (dim :pointer))
+
+(fsbv:defcstruct histogram
+  (type :int)
+  (bins :pointer)
+  (thresh :float)
+  (thresh2 :pointer)
+  (mat mat-nd))
+
+(fsbv:defcstruct connected-comp
+  (area :double)
+  (value scalar)
+  (rect rect)
+  (contour :pointer))
 
 
 ;;;;; enums
@@ -132,49 +168,54 @@
   (+hsv-to-bgr+ 54)
   (+window-autosize+ 1))
 
-;; uh-oh?
-;; TODO: Should construct a function rgb which returns a scalar
-;; object filled with the appropriate values.
-;; #define CV_RGB( r, g, b )  cvScalar( (b), (g), (r), 0 )
-
 
 ;;;;; core/
 
 
 ;; Returns width and height of array in elements
 ;; CvSize cvGetSize(const CvArr* arr)
-(defcfun ("cvGetSize" get-size) size
+(fsbv:defcfun ("cvGetSize" get-size) size
   (arr :pointer))
 
 ;; Copies source array to destination array
 ;; void cvCopy(const CvArr* src, CvArr* dst,
 ;;             const CvArr* mask CV_DEFAULT(NULL))
-(defcfun ("cvCopy" copy) :void
+(defcfun ("cvCopy" %copy) :void
   (src :pointer)
   (dst :pointer)
   (mask :pointer))
 
+(defun copy (src dst &optional (mask (null-pointer)))
+  (%copy src dst mask))
+
 ;; Retrieves number of an array dimensions and
 ;; optionally sizes of the dimensions
 ;; int cvGetDims(const CvArr* arr, int* sizes CV_DEFAULT(NULL))
-(defcfun ("cvGetDims" get-dims) :int
+(defcfun ("cvGetDims" %get-dims) :int
   (arr :pointer)
   (sizes (:pointer :int)))
+
+(defun get-dims (arr &optional (sizes (null-pointer)))
+  (%get-dims arr sizes))
 
 ;; Splits a multi-channel array into the set of single-channel
 ;; arrays or extracts particular [color] plane
 ;; void cvSplit(const CvArr* src, CvArr* dst0, CvArr* dst1,
 ;;              CvArr* dst2, CvArr* dst3)
-(defcfun ("cvSplit" split) :void
+(defcfun ("cvSplit" %split) :void
   (src :pointer)
   (dst-0 :pointer)
   (dst-1 :pointer)
   (dst-2 :pointer)
   (dst-3 :pointer))
 
+(defun split (src dst0 &optional (dst1 (null-pointer))
+              (dst2 (null-pointer)) (dst3 (null-pointer)))
+  (%split src dst0 dst1 dst2 dst3))
+
 ;; Creates IPL image (header and data)
 ;; IplImage* cvCreateImage(CvSize size, int depth, int channels)
-(defcfun ("cvCreateImage" create-image) :pointer
+(fsbv:defcfun ("cvCreateImage" create-image) :pointer
   (size size)
   (depth :int)
   (channels :int))
@@ -182,7 +223,7 @@
 ;; Makes a new matrix from <rect> subrectangle of input array.
 ;; No data is copied
 ;; CvMat* cvGetSubRect(const CvArr* arr, CvMat* submat, CvRect rect)
-(defcfun ("cvGetSubRect" get-sub-rect) :pointer
+(fsbv:defcfun ("cvGetSubRect" get-sub-rect) :pointer
   (arr :pointer)
   (submat :pointer)
   (rect rect))
@@ -192,13 +233,23 @@
 ;;                  CvPoint* min_loc CV_DEFAULT(NULL),
 ;;                  CvPoint* max_loc CV_DEFAULT(NULL),
 ;;                  const CvArr* mask CV_DEFAULT(NULL))
-(defcfun ("cvMinMaxLoc" min-max-loc) :void
+(defcfun ("cvMinMaxLoc" %min-max-loc) :void
   (arr :pointer)
   (min-val (:pointer :double))
   (max-val (:pointer :double))
   (min-loc :pointer)
   (max-loc :pointer)
   (mask :pointer))
+
+(defun min-max-loc (arr &optional (min-val 0.0) (max-val 0.0)
+                    (min-loc (null-pointer)) (max-loc (null-pointer))
+                    (mask (null-pointer)))
+  (with-foreign-objects ((minval :double)
+                         (maxval :double))
+    (setf (mem-ref minval :double) min-val)
+    (setf (mem-ref maxval :double) max-val)
+    (%min-max-loc arr minval maxval min-loc max-loc mask)
+    (list minval maxval min-loc max-loc)))
 
 ;; Performs linear transformation on every source array element:
 ;;    dst(x,y,c) = scale*src(x,y,c)+shift.
@@ -208,11 +259,14 @@
 ;; void cvConvertScale(const CvArr* src, CvArr* dst,
 ;;                     double scale CV_DEFAULT(1),
 ;;                     double shift CV_DEFAULT(0))
-(defcfun ("cvConvertScale" convert-scale) :void
+(defcfun ("cvConvertScale" %convert-scale) :void
   (src :pointer)
   (dst :pointer)
   (scale :double)
   (shift :double))
+
+(defun convert-scale (src dst scale &optional (shift 0.0))
+  (%convert-scale src dst scale shift))
 
 ;; Creates an exact copy of the input matrix (except, may be,
 ;; step value)
@@ -233,7 +287,7 @@
 ;;                  CvScalar color, int thickness CV_DEFAULT(1),
 ;;                  int line_type CV_DEFAULT(8),
 ;;                  int shift CV_DEFAULT(0))
-(defcfun ("cvRectangle" rectangle) :void
+(fsbv:defcfun ("cvRectangle" %rectangle) :void
   (img :pointer)
   (pt-1 point)
   (pt-2 point)
@@ -242,13 +296,20 @@
   (line-type :int)
   (shift :int))
 
+(defun rectangle (img pt1 pt2 color thickness
+                  &optional (line-type 0) (shift 0))
+  (%rectangle img pt1 pt2 color thickness line-type shift))
+
 ;; TODO: This is throwing "undefined alien" style-warnings
-;; because it's inlined. Fix it.
+;; because it's inlined. Fix it. (later) Actually it's worse
+;; than that. This errors completely when defined with
+;; fsbv:defcfun but that's exactly what we need since it
+;; takes structures by value... uh-oh...
 ;; void cvEllipseBox(CvArr* img, CvBox2D box, CvScalar color,
 ;;                  int thickness CV_DEFAULT(1),
 ;;                  int line_type CV_DEFAULT(8),
 ;;                  int shift CV_DEFAULT(0))
-(defcfun ("cvEllipseBox" ellipse-box) :void
+(fsbv:defcfun ("cvEllipseBox" ellipse-box) :void
   (img :pointer)
   (box box-2d)
   (color scalar)
@@ -260,6 +321,18 @@
 ;; void cvReleaseImage(IplImage** image)
 (defcfun ("cvReleaseImage" release-image) :void
   (image :pointer))
+
+;; CvScalar cvScalar(double val0, double val1 CV_DEFAULT(0),
+;;                   double val2 CV_DEFAULT(0),
+;;                   double val3 CV_DEFAULT(0))
+(defcfun ("cvScalar" scalar) scalar
+  (val1 :double)
+  (val2 :double)
+  (val3 :double)
+  (val4 :double))
+
+(defun rgb (r g b)
+  (scalar b g r 0))
 
 
 ;;;;; highgui/
@@ -355,41 +428,68 @@ resources used are released."
 ;;                           float* min_value, float* max_value,
 ;;                           int* min_idx CV_DEFAULT(NULL),
 ;;                           int* max_idx CV_DEFAULT(NULL))
-(defcfun ("cvGetMinMaxHistValue" get-min-max-hist-value) :void
+(defcfun ("cvGetMinMaxHistValue" %get-min-max-hist-value) :void
   (hist :pointer)
   (min-value (:pointer :float))
   (max-value (:pointer :float))
   (min-idx (:pointer :int))
   (max-idx (:pointer :int)))
 
+(defun get-min-max-hist-value (hist &optional (min-val 0.0) (max-val 1.0)
+                               (min-idx (null-pointer)) (max-idx (null-pointer)))
+  (with-foreign-objects ((minval :float)
+                         (maxval :float))
+    (setf (mem-ref minval :float) min-val)
+    (setf (mem-ref maxval :float) max-val)
+    (%get-min-max-hist-value hist minval maxval min-idx max-idx)
+    (list minval maxval min-idx max-idx)))
+
 ;; Calculates back project
 ;; void cvCalcArrBackProject(CvArr** image, CvArr* dst,
 ;;                           const CvHistogram* hist)
-(defcfun ("cvCalcArrBackProject" calc-arr-back-project) :void
+(defcfun ("cvCalcArrBackProject" %calc-arr-back-project) :void
   (image :pointer)
   (dst :pointer)
   (hist :pointer))
+
+(defun calc-arr-back-project (image dst hist)
+  (with-foreign-object (ptr-to-image :pointer)
+    (setf (mem-ref ptr-to-image :pointer) image)
+    (%calc-arr-back-project ptr-to-image dst hist)))
 
 ;; Calculates array histogram
 ;; void cvCalcArrHist(CvArr** arr, CvHistogram* hist,
 ;;                    int accumulate CV_DEFAULT(0),
 ;;                    const CvArr* mask CV_DEFAULT(NULL))
-(defcfun ("cvCalcArrHist" calc-arr-hist) :void
+(defcfun ("cvCalcArrHist" %calc-arr-hist) :void
   (arr :pointer)
   (hist :pointer)
   (accumulate :int)
   (mask :pointer))
 
+(defun calc-arr-hist (arr hist acc &optional (mask (null-pointer)))
+  (with-foreign-object (ptr-to-arr :pointer)
+    (setf (mem-ref ptr-to-arr :pointer) arr)
+    (%calc-arr-hist ptr-to-arr hist acc mask)))
+
 ;; Creates new histogram
 ;; CvHistogram* cvCreateHist(int dims, int* sizes, int type,
 ;;                           float** ranges CV_DEFAULT(NULL),
 ;;                           int uniform CV_DEFAULT(1));
-(defcfun ("cvCreateHist" create-hist) :pointer
+(defcfun ("cvCreateHist" %create-hist) :pointer
   (dims :int)
   (sizes (:pointer :int))
   (type :int)
   (ranges :pointer)
   (uniform :int))
+
+(defun create-hist (dims sizes type ranges &optional (uniform 1))
+  (with-foreign-objects ((sizes-ptr :int)
+                         (ranges-ptr :float (length ranges)))
+    (setf (mem-ref sizes-ptr :int) sizes)
+    (dotimes (i (length ranges))
+      (setf (mem-aref ranges-ptr :float i) (aref ranges i)))
+    (%create-hist dims sizes-ptr type ranges-ptr uniform)))
 
 
 ;;;;; tracking/
@@ -398,14 +498,17 @@ resources used are released."
 ;; int cvCamShift(const CvArr* prob_image, CvRect window,
 ;;                CvTermCriteria criteria, CvConnectedComp* comp,
 ;;                CvBox2D* box CV_DEFAULT(NULL))
-(defcfun ("cvCamShift" %camshift) :int
+(fsbv:defcfun ("cvCamShift" %camshift) :int
   (prob-image :pointer)
   (window rect)
   (criteria term-criteria)
   (comp :pointer)
   (box :pointer))
 
-(defun camshift (prob-image window criteria comp box)
+(defun camshift (prob-image window criteria)
   "Implements CAMSHIFT algorithm to determine object position, size
 and origentation from the object's histogram backprojection."
-  (%camshift prob-image window criteria comp box))
+  (with-foreign-objects ((comp 'connected-comp)
+                         (track-box 'box-2d))
+    (%camshift prob-image window criteria comp track-box)
+    (list comp track-box)))
