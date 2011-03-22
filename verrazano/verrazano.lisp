@@ -514,10 +514,7 @@ resources used are released."
   (comp :pointer)
   (box :pointer))
 
-(defun camshift (prob-image window criteria)
+(defun camshift (prob-image window criteria comp track-box)
   "Implements CAMSHIFT algorithm to determine object position, size
 and origentation from the object's histogram backprojection."
-  (with-foreign-objects ((comp 'connected-comp)
-                         (track-box 'box-2d))
-    (%camshift prob-image window criteria comp track-box)
-    (list comp track-box)))
+  (%camshift prob-image window criteria comp track-box))

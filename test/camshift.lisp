@@ -22,7 +22,11 @@
    (selection :accessor selection
               :initform nil)
    (hue :accessor hue
-        :initform (null-pointer))))
+        :initform (null-pointer))
+   (comp :accessor comp
+         :initform (foreign-alloc 'connected-comp))
+   (track-box :accessor track-box
+              :initform (foreign-alloc 'box-2d))))
 
 (defparameter *camshift-state* (make-instance 'camshift-state))
 
@@ -93,36 +97,35 @@
     (when (and (track-window *camshift-state*)
                (is-rect-nonzero (track-window *camshift-state*)))
       (setf crit `(,(+ +termcrit-iter+ +termcrit-eps+) 10 1.0))
-
-      (destructuring-bind (comp track-box)
-          (camshift backproject (track-window *camshift-state*) crit)
+      (with-accessors ((comp comp) (track-box track-box)) *camshift-state*
+        (camshift backproject (track-window *camshift-state*) crit comp track-box)
         (setf (track-window *camshift-state*)
-              (foreign-slot-value comp 'connected-comp 'rect))
+              (foreign-slot-value comp 'connected-comp 'rect))))
 
-        ;; Handle mouse input
-        (when (and (drag-start *camshift-state*)
-                   (is-rect-nonzero (selection *camshift-state*)))
-          (let* ((sub (get-sub-rect frame (selection *camshift-state*)))
-                 (save (clone-mat sub))
-                 (sel (get-sub-rect (hue *camshift-state*)
-                                    (selection *camshift-state*))))
-            (convert-scale frame frame 0.5)
-            (copy save sub)
-            (destructuring-bind (x y w h) (selection *camshift-state*)
-              ;; Once again, scalar is probably wrong here.
-              (rectangle frame (list x y) (list (+ x w) (+ y h)) '(255 255 255))
-              (calc-arr-hist sel *hist* 0)
-              (let ((max-val (second (get-min-max-hist-value *hist*))))
-                (unless (zerop max-val)
-                  (convert-scale (foreign-slot-value *hist* 'histogram 'bins)
-                                 (foreign-slot-value *hist* 'histogram 'bins)
-                                 (/ 255.0 max-val)))))))
+    ;; Handle mouse input
+    (when (and (drag-start *camshift-state*)
+               (is-rect-nonzero (selection *camshift-state*)))
+      (let* ((sub (get-sub-rect frame (selection *camshift-state*)))
+             (save (clone-mat sub))
+             (sel (get-sub-rect (hue *camshift-state*)
+                                (selection *camshift-state*))))
+        (convert-scale frame frame 0.5d0)
+        (copy save sub)
+        (destructuring-bind (x y w h) (selection *camshift-state*)
+          ;; Once again, scalar is probably wrong here.
+          (rectangle frame (list x y) (list (+ x w) (+ y h)) '(255 255 255))
+          (calc-arr-hist sel *hist* 0)
+          (let ((max-val (second (get-min-max-hist-value *hist*))))
+            (unless (zerop max-val)
+              (convert-scale (foreign-slot-value *hist* 'histogram 'bins)
+                             (foreign-slot-value *hist* 'histogram 'bins)
+                             (/ 255.0d0 max-val)))))))
 
-        ; Draw the damn box and show it to the user already!
-        (when (and (track-window *camshift-state*)
-                   (is-rect-nonzero (track-window *camshift-state*)))
-          (ellipse-box frame track-box (rgb 255 0 0) 3 +aa+ 0))
-        (show-image window-name frame)))))
+        ;; Draw the damn box and show it to the user already!
+    (when (and (track-window *camshift-state*)
+               (is-rect-nonzero (track-window *camshift-state*)))
+      (ellipse-box frame (track-box *camshift-state*) (rgb 255 0 0) 3 +aa+ 0))
+    (show-image window-name frame)))
 
 (defun test-tracking (&key (device-id 0) (quit-char #\q)
                       (window-name "Camshift Demo"))
@@ -133,9 +136,14 @@ Click and drag with the mouse to select the object to track.~%"
               quit-char)
       ;; wait-key only works when a named-window exists.
       (set-mouse-callback window-name (callback on-mouse) (null-pointer))
-      (loop until (char= quit-char
-                         (code-char (mod (wait-key 33) 256)))
-         do (camshift-loop :window-name window-name :capture-src camera)))))
+      (unwind-protect
+           (loop until (char= quit-char
+                              (code-char (mod (wait-key 33) 256)))
+              do (camshift-loop :window-name window-name :capture-src camera))
+        (with-accessors ((comp comp) (track-box track-box)) *camshift-state*
+          (foreign-free comp)
+          (foreign-free track-box)))
+      (setf *camshift-state* (make-instance 'camshift-state)))))
 
 (defun show-camera (&key (device-id 0) (quit-char #\q)
                     (window-name "OpenCV Demo"))
