@@ -257,9 +257,12 @@
   (max-loc :pointer)
   (mask :pointer))
 
-(defun min-max-loc (arr &optional (min-val 0.0) (max-val 0.0)
+(defun min-max-loc (arr &optional (min-val 0.0d0) (max-val 0.0d0)
                     (min-loc (null-pointer)) (max-loc (null-pointer))
                     (mask (null-pointer)))
+  (when (or (not (typep min-val 'double-float))
+            (not (typep max-val 'double-float)))
+       (error "min-max-loc requires double-floats. (i.e. 0.0d0)"))
   (with-foreign-objects ((minval :double)
                          (maxval :double))
     (setf (mem-ref minval :double) min-val)
@@ -281,7 +284,10 @@
   (scale :double)
   (shift :double))
 
-(defun convert-scale (src dst scale &optional (shift 0.0))
+(defun convert-scale (src dst scale &optional (shift 0.0d0))
+  (when (or (not (typep scale 'double-float))
+            (not (typep shift 'double-float)))
+    (error "convert-scale requires double-floats. (i.e. 0.0d0)"))
   (%convert-scale src dst scale shift))
 
 ;; Creates an exact copy of the input matrix (except, may be,
@@ -343,7 +349,11 @@
   (val4 :double))
 
 (defun rgb (r g b)
-  (scalar b g r 0))
+  (when (or (not (typep r 'double-float))
+            (not (typep g 'double-float))
+            (not (typep b 'double-float)))
+    (error "rgb requires double-floats. (i.e. 0.0d0)"))
+  (scalar b g r 0.0d0))
 
 
 ;;;;; highgui/
