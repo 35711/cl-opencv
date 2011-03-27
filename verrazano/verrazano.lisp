@@ -236,13 +236,8 @@
   (submat :pointer)
   (rect rect))
 
-(defun get-sub-rect (arr rect)
-  ;; TODO: There may be two problems with w-f-o use.
-  ;; 1) If the stuff is deallocated at the end of the function
-  ;; before we get to use it. 2) If it can't support structures
-  ;; like 'mat, 'connected-comp, 'box-2d, etc.
-  (with-foreign-object (submat 'mat)
-    (%get-sub-rect arr submat rect)))
+(defun get-sub-rect (arr submat rect)
+  (%get-sub-rect arr submat rect))
 
 ;; Finds global minimum, maximum and their positions
 ;; void cvMinMaxLoc(const CvArr* arr, double* min_val, double* max_val,
@@ -418,7 +413,9 @@
   "Bind NAME to SOURCE and execute BODY ensuring that any
 resources used are released."
   (let ((capture-ptr (gensym)))
-    `(let ((,name ,source))
+    `(let ((,name (etypecase ,source
+                    (fixnum (create-camera-capture ,source))
+                    (string (create-file-capture ,source)))))
        (unwind-protect (progn ,@body)
          ;; release-capture takes a CvCapture** whereas
          ;; name is a CvCapture* necessitating this tomfoolery
