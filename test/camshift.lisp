@@ -119,7 +119,7 @@
           (setf sel (get-sub-rect (hue *camshift-state*) sel
                                   (selection *camshift-state*)))
           (calc-arr-hist sel *hist* 0)
-          (destructuring-bind (a max c d) (get-min-max-hist-value *hist*)
+          (let ((max (second (get-min-max-hist-value *hist*))))
             (unless (zerop max)
               (convert-scale (foreign-slot-value *hist* 'histogram 'bins)
                              (foreign-slot-value *hist* 'histogram 'bins)
@@ -128,8 +128,15 @@
         ;; Draw the damn box and show it to the user already!
         (when (and (track-window *camshift-state*)
                    (is-rect-nonzero (track-window *camshift-state*)))
-          (ellipse-box frame (track-box *camshift-state*)
-                       '(255.0d0 0.0d0 0.0d0 0.0d0) 3 +aa+ 0)))
+          ;; TODO:
+          ;; TRACK-BOX is busted, getting a pointer where we expect a literal.
+          ;; I'm trying to manually transform it here. I think the first+second
+          ;; should be foreign-slot-value calls...
+          (let* ((box (fsbv:object (track-box *camshift-state*) 'box-2d))
+                 (track-box (list (fsbv:object (first box) 'point-2d-32f)
+                                  (fsbv:object (second box) 'size-2d-32f)
+                                  (third box))))
+            (ellipse-box frame track-box '(255.0d0 0.0d0 0.0d0 0.0d0) 3 +aa+ 0))))
     (show-image window-name frame)))
 
 (defun test-tracking (&key (source 0) (quit-char #\q)
