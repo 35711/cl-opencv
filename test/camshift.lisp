@@ -119,14 +119,11 @@
           (setf sel (get-sub-rect (hue *camshift-state*) sel
                                   (selection *camshift-state*)))
           (calc-arr-hist sel *hist* 0)
-          (with-foreign-objects ((min-val :float)
-                                 (max-val :float))
-            (%get-min-max-hist-value *hist* min-val max-val (null-pointer) (null-pointer))
-            (let ((max (mem-ref max-val :float)))
-              (unless (zerop max)
-                (convert-scale (foreign-slot-value *hist* 'histogram 'bins)
-                               (foreign-slot-value *hist* 'histogram 'bins)
-                               (/ 255.0d0 max))))))
+          (destructuring-bind (a max c d) (get-min-max-hist-value *hist*)
+            (unless (zerop max)
+              (convert-scale (foreign-slot-value *hist* 'histogram 'bins)
+                             (foreign-slot-value *hist* 'histogram 'bins)
+                             (/ 255.0d0 max)))))
 
         ;; Draw the damn box and show it to the user already!
         (when (and (track-window *camshift-state*)

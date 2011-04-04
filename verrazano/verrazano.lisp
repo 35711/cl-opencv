@@ -457,11 +457,10 @@ resources used are released."
                                (min-idx (null-pointer)) (max-idx (null-pointer)))
   (with-foreign-objects ((minval :float)
                          (maxval :float))
-    (setf (mem-ref minval :float) min-val)
-    (setf (mem-ref maxval :float) max-val)
+    (setf (mem-ref minval :float) min-val
+          (mem-ref maxval :float) max-val)
     (%get-min-max-hist-value hist minval maxval min-idx max-idx)
-    (list (mem-ref minval :float) (mem-ref maxval :float)
-          min-idx max-idx)))
+    (list (mem-ref minval :float) (mem-ref maxval :float) min-idx max-idx)))
 
 ;; Calculates back project
 ;; void cvCalcArrBackProject(CvArr** image, CvArr* dst,
