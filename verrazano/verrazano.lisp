@@ -460,7 +460,8 @@ resources used are released."
     (setf (mem-ref minval :float) min-val)
     (setf (mem-ref maxval :float) max-val)
     (%get-min-max-hist-value hist minval maxval min-idx max-idx)
-    (list minval maxval min-idx max-idx)))
+    (list (mem-ref minval :float) (mem-ref maxval :float)
+          min-idx max-idx)))
 
 ;; Calculates back project
 ;; void cvCalcArrBackProject(CvArr** image, CvArr* dst,

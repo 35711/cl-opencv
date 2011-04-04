@@ -11,8 +11,8 @@
 (in-package :opencv-verrazano)
 
 ;; TODO
-; TEST TEST TEST!
-; Finish and start using the cv-test package?
+; Finish testing and fixing bugs.
+; Start using the cv-test package.
 
 (defclass camshift-state ()
   ((drag-start :accessor drag-start
@@ -62,7 +62,7 @@
          (max (second (min-max-loc temp-bins))))
     (convert-scale temp-bins temp-bins (/ 255.0 max))
     (destructuring-bind (width height) (get-size hist-hsv)
-      (let ((hdims (elt (get-dims temp-bins) 0)))
+      (let ((hdims (get-dims temp-bins)))
         (loop for x from 1 to width do
              (let ((xh (/ (* 180 x) (1- width)))
                    ;; This mem-aref is probably wrong...
@@ -81,7 +81,7 @@
     result))
 
 (defun camshift-loop (&key window-name capture-src)
-  (let (frame hsv backproject crit)
+  (let (frame hsv backproject crit save)
 
     ;; Get a frame, then Convert to HSV but keep the hue
     (setf frame (query-frame capture-src))
@@ -95,40 +95,44 @@
     (calc-arr-back-project (hue *camshift-state*) backproject *hist*)
     (when (and (track-window *camshift-state*)
                (is-rect-nonzero (track-window *camshift-state*)))
-      (setf crit `(,(+ +termcrit-iter+ +termcrit-eps+) 10 1.0))
+      (setf crit `(,(+ +termcrit-iter+ +termcrit-eps+) 10 1.0d0))
       (with-accessors ((comp comp) (track-box track-box)) *camshift-state*
         (camshift backproject (track-window *camshift-state*) crit comp track-box)
         (setf (track-window *camshift-state*)
-              (foreign-slot-value comp 'connected-comp 'rect))))
+              (fsbv:object (foreign-slot-value comp 'connected-comp 'rect)
+                           'rect))))
 
     ;; Handle mouse input
-    (when (and (drag-start *camshift-state*)
-               (is-rect-nonzero (selection *camshift-state*)))
-      (with-foreign-objects ((sub-mat 'mat)
-                             (sel-mat 'mat))
-        (get-sub-rect (hue *camshift-state*) sel-mat
-                      (selection *camshift-state*))
-        (get-sub-rect frame sub-mat (selection *camshift-state*))
-        (let* ((save (clone-mat sub-mat)))
+    (if (and (drag-start *camshift-state*)
+             (is-rect-nonzero (selection *camshift-state*)))
+
+        ;; Highlight the selected area, recompute histogram
+        (with-foreign-objects ((sub 'mat)
+                               (sel 'mat))
+          (setf sub (get-sub-rect frame sub (selection *camshift-state*)))
+          (setf save (clone-mat sub))
           (convert-scale frame frame 0.5d0)
-          (copy save sub-mat)
+          (copy save sub)
           (destructuring-bind (x y w h) (selection *camshift-state*)
             (rectangle frame (list x y) (list (+ x w) (+ y h))
-                       '(255.0d0 255.0d0 255.0d0 0.0d0))
-            (calc-arr-hist sel-mat *hist* 0)
-            (format t "We got far!~%")
-            (let ((max-val (second (get-min-max-hist-value *hist*))))
-              (format t "REALLY FAR: ~A~%" max-val)
-              (unless (zerop max-val) ;; TODO: Failing here.
+                       '(255.0d0 255.0d0 255.0d0 0.0d0)))
+          (setf sel (get-sub-rect (hue *camshift-state*) sel
+                                  (selection *camshift-state*)))
+          (calc-arr-hist sel *hist* 0)
+          (with-foreign-objects ((min-val :float)
+                                 (max-val :float))
+            (%get-min-max-hist-value *hist* min-val max-val (null-pointer) (null-pointer))
+            (let ((max (mem-ref max-val :float)))
+              (unless (zerop max)
                 (convert-scale (foreign-slot-value *hist* 'histogram 'bins)
                                (foreign-slot-value *hist* 'histogram 'bins)
-                               (/ 255.0d0 max-val))))))))
+                               (/ 255.0d0 max))))))
 
-    ;; Draw the damn box and show it to the user already!
-    (when (and (track-window *camshift-state*)
-               (is-rect-nonzero (track-window *camshift-state*)))
-      (ellipse-box frame (track-box *camshift-state*)
-                  '(255.0d0 0.0d0 0.0d0 0.0d0) 3 +aa+ 0))
+        ;; Draw the damn box and show it to the user already!
+        (when (and (track-window *camshift-state*)
+                   (is-rect-nonzero (track-window *camshift-state*)))
+          (ellipse-box frame (track-box *camshift-state*)
+                       '(255.0d0 0.0d0 0.0d0 0.0d0) 3 +aa+ 0)))
     (show-image window-name frame)))
 
 (defun test-tracking (&key (source 0) (quit-char #\q)
