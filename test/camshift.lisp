@@ -95,7 +95,7 @@
     (calc-arr-back-project (hue *camshift-state*) backproject *hist*)
     (when (and (track-window *camshift-state*)
                (is-rect-nonzero (track-window *camshift-state*)))
-      (setf crit `(,(+ +termcrit-iter+ +termcrit-eps+) 10 1.0d0))
+      (setf crit `(,(logior +termcrit-iter+ +termcrit-eps+) 10 1.0d0))
       (with-accessors ((comp comp) (track-box track-box)) *camshift-state*
         (camshift backproject (track-window *camshift-state*) crit comp track-box)
         (setf (track-window *camshift-state*)
@@ -107,10 +107,9 @@
              (is-rect-nonzero (selection *camshift-state*)))
 
         ;; Highlight the selected area, recompute histogram
-        (with-foreign-objects ((sub 'mat)
-                               (sel 'mat))
-          (setf sub (get-sub-rect frame sub (selection *camshift-state*)))
-          (setf save (clone-mat sub))
+        (with-foreign-objects ((sub 'mat) (sel 'mat))
+          (setf sub (get-sub-rect frame sub (selection *camshift-state*))
+                save (clone-mat sub))
           (convert-scale frame frame 0.5d0)
           (copy save sub)
           (destructuring-bind (x y w h) (selection *camshift-state*)
