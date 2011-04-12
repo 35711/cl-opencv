@@ -99,8 +99,6 @@
         ;; Draw the damn box and show it to the user already!
         (when (and (track-window *camshift-state*)
                    (is-rect-nonzero (track-window *camshift-state*)))
-          ;; TODO:
-          ;; Figure out the right start-angle and end-angle to pass to ellipse.
           (let* ((box (fsbv:object (track-box *camshift-state*) 'box-2d))
                  (track-box (list (mapcar #'round (fsbv:object (first box) 'point-2d-32f))
                                   (mapcar #'round (fsbv:object (second box) 'size-2d-32f))
@@ -108,7 +106,7 @@
             (format t "What's track-box? ~A~%" track-box)
             ;(ellipse-box frame track-box '(255.0d0 0.0d0 0.0d0 0.0d0) 3 +aa+ 0))))
             (ellipse frame (first track-box) (second track-box)
-                     (coerce (third track-box) 'double-float) 0.0d0 2550.d0
+                     (coerce (third track-box) 'double-float) 0.0d0 360.0d0
                      '(255.0d0 0.0d0 0.0d0 0.0d0) 3 +aa+ 0))))
     (show-image window-name frame)))
 
