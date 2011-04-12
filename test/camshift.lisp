@@ -53,17 +53,17 @@
        (plusp (fourth rect))))
 
 (defun camshift-loop (&key window-name capture-src)
-  (let (frame hsv backproject crit save)
+  (let* ((frame (query-frame capture-src))
+         (hsv (create-image (get-size frame) 8 3))
+         (backproject (create-image (get-size frame) 8 1))
+         crit save)
 
-    ;; Get a frame, then Convert to HSV but keep the hue
-    (setf frame (query-frame capture-src))
-    (setf hsv (create-image (get-size frame) 8 3))
+    ;; Convert the current frame to HSV but keep the hue
     (cvt-color frame hsv +bgr-to-hsv+)
     (setf (hue *camshift-state*) (create-image (get-size frame) 8 1))
     (split hsv (hue *camshift-state*))
 
     ;; Compute back projection and run the camshift
-    (setf backproject (create-image (get-size frame) 8 1))
     (calc-arr-back-project (hue *camshift-state*) backproject *hist*)
     (when (and (track-window *camshift-state*)
                (is-rect-nonzero (track-window *camshift-state*)))
