@@ -128,14 +128,16 @@
         (when (and (track-window *camshift-state*)
                    (is-rect-nonzero (track-window *camshift-state*)))
           ;; TODO:
-          ;; TRACK-BOX is busted, getting a pointer where we expect a literal.
-          ;; I'm trying to manually transform it here. I think the first+second
-          ;; should be foreign-slot-value calls...
+          ;; Figure out the right start-angle and end-angle to pass to ellipse.
           (let* ((box (fsbv:object (track-box *camshift-state*) 'box-2d))
-                 (track-box (list (fsbv:object (first box) 'point-2d-32f)
-                                  (fsbv:object (second box) 'size-2d-32f)
+                 (track-box (list (mapcar #'round (fsbv:object (first box) 'point-2d-32f))
+                                  (mapcar #'round (fsbv:object (second box) 'size-2d-32f))
                                   (third box))))
-            (ellipse-box frame track-box '(255.0d0 0.0d0 0.0d0 0.0d0) 3 +aa+ 0))))
+            (format t "What's track-box? ~A~%" track-box)
+            ;(ellipse-box frame track-box '(255.0d0 0.0d0 0.0d0 0.0d0) 3 +aa+ 0))))
+            (ellipse frame (first track-box) (second track-box)
+                     (coerce (third track-box) 'double-float) 0.0d0 2550.d0
+                     '(255.0d0 0.0d0 0.0d0 0.0d0) 3 +aa+ 0))))
     (show-image window-name frame)))
 
 (defun test-tracking (&key (source 0) (quit-char #\q)
@@ -164,3 +166,27 @@ Click and drag with the mouse to select the object to track.~%"
       ;; wait-key appears to only work when a named-window is around.
       (loop until (char= quit-char (code-char (mod (wait-key 33) 256)))
          do (show-image window-name (query-frame video))))))
+
+(defun test-tracking-gui ()
+  (gtk:within-main-loop
+    (let ((window (make-instance 'gtk:gtk-window
+                                 :default-width 300
+                                 :default-height 300
+                                 :window-position :center
+                                 :title "Camshift"))
+          (menu-bar (make-instance 'gtk:menu-bar
+                                   :pack-direction :ltr
+                                   :child-pack-direction :ltr))
+          (camera (make-instance 'gtk:menu-item
+                                 :label "Camera"))
+          (file (make-instance 'gtk:menu-item
+                               :label "File"))
+          (source (make-instance 'gtk:menu
+                                 :attach-widget file
+                                 :attach-widget camera))
+          (track (make-instance 'gtk:menu
+                                :label "Track"))
+          (sbutton (make-instance 'gtk:button :label "Start"))
+          (pbutton (make-instance 'gtk:button :label "Pause")))
+      (gtk:container-add window menu-bar sbutton pbutton)
+      (gtk:widget-show window :all t))))

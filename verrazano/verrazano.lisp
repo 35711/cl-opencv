@@ -329,6 +329,23 @@
   (line-type :int)
   (shift :int))
 
+;; void cvEllipse(CvArr* img, CvPoint center, CvSize axes,
+;;                double angle, double start_angle, double end_angle,
+;;                CvScalar color, int thickness CV_DEFAULT(1),
+;;                int line_type CV_DEFAULT(8),
+;;                int shift CV_DEFAULT(0))
+(fsbv:defcfun ("cvEllipse" ellipse) :void
+  (img :pointer)
+  (center point)
+  (axes size)
+  (angle :double)
+  (start-angle :double)
+  (end-angle :double)
+  (color scalar)
+  (thickness :int)
+  (line-type :int)
+  (shift :int))
+
 ;; Releases IPL image header and data
 ;; void cvReleaseImage(IplImage** image)
 (defcfun ("cvReleaseImage" release-image) :void
