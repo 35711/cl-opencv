@@ -52,34 +52,6 @@
   (and (plusp (third rect))
        (plusp (fourth rect))))
 
-(defun hue-histogram-as-image (hist &key (size '(320 200)))
-  ;; Unused right now. I suspect it's unnecessary if we don't want
-  ;; visual feedback via histogram for the user during target selection.
-  (let* ((hist-hsv (create-image size 8 3))
-         (result (create-image size 8 3))
-         (temp-bins (clone-mat-nd
-                     (foreign-slot-value hist 'histogram 'bins)))
-         (max (second (min-max-loc temp-bins))))
-    (convert-scale temp-bins temp-bins (/ 255.0 max))
-    (destructuring-bind (width height) (get-size hist-hsv)
-      (let ((hdims (get-dims temp-bins)))
-        (loop for x from 1 to width do
-             (let ((xh (/ (* 180 x) (1- width)))
-                   ;; This mem-aref is probably wrong...
-                   ;; we likely need the array temp-bins points to.
-                   ;; What type is it?
-                   (val (/ (* height (mem-aref temp-bins :int
-                                               (round (/ (* hdims x)
-                                                         width))))
-                           255)))
-               ;; The scalars (fourth arg) need to be RGB calls.
-               (rectangle hist-hsv (list x 0) (list x (- height val))
-                          (list xh 255 64) -1)
-               (rectangle hist-hsv (list x (- height val)) (list x height)
-                          (list xh 255 255) -1)))))
-    (cvt-color hist-hsv result +hsv-to-bgr+)
-    result))
-
 (defun camshift-loop (&key window-name capture-src)
   (let (frame hsv backproject crit save)
 
