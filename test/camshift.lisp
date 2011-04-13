@@ -58,8 +58,7 @@
   (let* ((frame (query-frame capture-src))
          (hsv (create-image (get-size frame) 8 3))
          (backproject (create-image (get-size frame) 8 1))
-         (hue (create-image (get-size frame) 8 1))
-         save)
+         (hue (create-image (get-size frame) 8 1)))
 
     ;; Convert the current frame to HSV but keep the hue
     (cvt-color frame hsv +bgr-to-hsv+)
@@ -87,7 +86,7 @@
              (is-rect-nonzero (selection *camshift-state*)))
 
         ;; Highlight the selected area, recompute histogram
-        (with-foreign-objects ((sub 'mat) (sel 'mat))
+        (with-foreign-objects ((sub 'mat) (sel 'mat) (save 'mat))
           (setf sub (get-sub-rect frame sub (selection *camshift-state*))
                 save (clone-mat sub))
           (convert-scale frame frame 0.5d0)
