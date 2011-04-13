@@ -17,6 +17,7 @@
 ;; Bring it in and out of frame
 ;; Make the ellipse tighter
 ; Improve style and make a proper package and/or system.
+; Cleanup hist with release-hist after camshift-loop?
 
 (defclass camshift-state ()
   ((drag-start :accessor drag-start
@@ -28,11 +29,11 @@
    (comp :accessor comp
          :initform (foreign-alloc 'connected-comp))
    (track-box :accessor track-box
-              :initform (foreign-alloc 'box-2d))))
+              :initform (foreign-alloc 'box-2d))
+   (hist :accessor hist
+         :initform (create-hist 1 180 +hist-array+))))
 
 (defparameter *camshift-state* (make-instance 'camshift-state))
-
-(defparameter *hist* (create-hist 1 180 +hist-array+))
 
 (defcallback on-mouse :void ((event :int) (x :int) (y :int)
                              (flags :int) (param :pointer))
@@ -68,7 +69,7 @@
       (%release-image image-ptr))
 
     ;; Compute back projection and run the camshift
-    (calc-arr-back-project hue backproject *hist*)
+    (calc-arr-back-project hue backproject (hist *camshift-state*))
     (when (and (track-window *camshift-state*)
                (is-rect-nonzero (track-window *camshift-state*)))
       (let ((crit `(,(logior +termcrit-iter+ +termcrit-eps+) 10 1.0d0)))
@@ -95,11 +96,11 @@
             (rectangle frame (list x y) (list (+ x w) (+ y h))
                        '(255.0d0 255.0d0 255.0d0 0.0d0)))
           (setf sel (get-sub-rect hue sel (selection *camshift-state*)))
-          (calc-arr-hist sel *hist* 0)
-          (let ((max (second (get-min-max-hist-value *hist*))))
+          (calc-arr-hist sel (hist *camshift-state*) 0)
+          (let ((max (second (get-min-max-hist-value (hist *camshift-state*)))))
             (unless (zerop max)
-              (convert-scale (foreign-slot-value *hist* 'histogram 'bins)
-                             (foreign-slot-value *hist* 'histogram 'bins)
+              (convert-scale (foreign-slot-value (hist *camshift-state*) 'histogram 'bins)
+                             (foreign-slot-value (hist *camshift-state*) 'histogram 'bins)
                              (/ 255.0d0 max)))))
 
         ;; Draw the damn box and show it to the user already!
