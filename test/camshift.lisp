@@ -11,8 +11,12 @@
 (in-package :opencv-verrazano)
 
 ;; TODO
-; Finish testing and fixing bugs.
-; Start using the cv-test package.
+; Improve the tracking:
+;; Test various objects
+;; Occlude the object being tracked
+;; Bring it in and out of frame
+;; Make the ellipse tighter
+; Improve style and make a proper package and/or system.
 
 (defclass camshift-state ()
   ((drag-start :accessor drag-start
@@ -21,8 +25,6 @@
                  :initform nil)
    (selection :accessor selection
               :initform nil)
-   (hue :accessor hue
-        :initform (null-pointer))
    (comp :accessor comp
          :initform (foreign-alloc 'connected-comp))
    (track-box :accessor track-box
@@ -56,23 +58,29 @@
   (let* ((frame (query-frame capture-src))
          (hsv (create-image (get-size frame) 8 3))
          (backproject (create-image (get-size frame) 8 1))
-         crit save)
+         (hue (create-image (get-size frame) 8 1))
+         save)
 
     ;; Convert the current frame to HSV but keep the hue
     (cvt-color frame hsv +bgr-to-hsv+)
-    (setf (hue *camshift-state*) (create-image (get-size frame) 8 1))
-    (split hsv (hue *camshift-state*))
+    (split hsv hue)
+    (with-foreign-object (image-ptr :pointer)
+      (setf (mem-ref image-ptr :pointer) hsv)
+      (%release-image image-ptr))
 
     ;; Compute back projection and run the camshift
-    (calc-arr-back-project (hue *camshift-state*) backproject *hist*)
+    (calc-arr-back-project hue backproject *hist*)
     (when (and (track-window *camshift-state*)
                (is-rect-nonzero (track-window *camshift-state*)))
-      (setf crit `(,(logior +termcrit-iter+ +termcrit-eps+) 10 1.0d0))
-      (with-accessors ((comp comp) (track-box track-box)) *camshift-state*
-        (camshift backproject (track-window *camshift-state*) crit comp track-box)
-        (setf (track-window *camshift-state*)
-              (fsbv:object (foreign-slot-value comp 'connected-comp 'rect)
-                           'rect))))
+      (let ((crit `(,(logior +termcrit-iter+ +termcrit-eps+) 10 1.0d0)))
+        (with-accessors ((comp comp) (window track-window)
+                         (track-box track-box)) *camshift-state*
+          (camshift backproject window crit comp track-box)
+          (setf window (fsbv:object (foreign-slot-value
+                                     comp 'connected-comp 'rect) 'rect)))))
+    (with-foreign-object (image-ptr :pointer)
+      (setf (mem-ref image-ptr :pointer) backproject)
+      (%release-image image-ptr))
 
     ;; Handle mouse input
     (if (and (drag-start *camshift-state*)
@@ -87,8 +95,7 @@
           (destructuring-bind (x y w h) (selection *camshift-state*)
             (rectangle frame (list x y) (list (+ x w) (+ y h))
                        '(255.0d0 255.0d0 255.0d0 0.0d0)))
-          (setf sel (get-sub-rect (hue *camshift-state*) sel
-                                  (selection *camshift-state*)))
+          (setf sel (get-sub-rect hue sel (selection *camshift-state*)))
           (calc-arr-hist sel *hist* 0)
           (let ((max (second (get-min-max-hist-value *hist*))))
             (unless (zerop max)
@@ -102,12 +109,16 @@
           (let* ((box (fsbv:object (track-box *camshift-state*) 'box-2d))
                  (track-box (list (mapcar #'round (fsbv:object (first box) 'point-2d-32f))
                                   (mapcar #'round (fsbv:object (second box) 'size-2d-32f))
+                                  ;(- (/ (* 360 (third box)) (* 2 pi)) 90))))
                                   (third box))))
             (format t "What's track-box? ~A~%" track-box)
             ;(ellipse-box frame track-box '(255.0d0 0.0d0 0.0d0 0.0d0) 3 +aa+ 0))))
             (ellipse frame (first track-box) (second track-box)
                      (coerce (third track-box) 'double-float) 0.0d0 360.0d0
                      '(255.0d0 0.0d0 0.0d0 0.0d0) 3 +aa+ 0))))
+    (with-foreign-object (image-ptr :pointer)
+      (setf (mem-ref image-ptr :pointer) hue)
+      (%release-image image-ptr))
     (show-image window-name frame)))
 
 (defun test-tracking (&key (source 0) (quit-char #\q)
@@ -120,8 +131,7 @@ Click and drag with the mouse to select the object to track.~%"
       ;; wait-key only works when a named-window exists.
       (set-mouse-callback window-name (callback on-mouse) (null-pointer))
       (unwind-protect
-           (loop until (char= quit-char
-                              (code-char (mod (wait-key 33) 256)))
+           (loop until (char= quit-char (code-char (mod (wait-key 33) 256)))
               do (camshift-loop :window-name window-name :capture-src video))
         (with-accessors ((comp comp) (track-box track-box)) *camshift-state*
           (foreign-free comp)

@@ -20,6 +20,12 @@
 ;;; It adds a requirement on libffi and needed a patch on my system
 ;;; to help if find the libffi headers or it wouldn't build.
 
+;; Functions that may require manual deallocation
+; cvCreateImage via cvReleaseImage
+; cvCloneMat, cvCloneMatND and cvGetSubRect via cvReleaseMat
+; cvCreateHist via cvReleaseHist
+; the capture functions, this is handled by with-video
+
 ;; Takes at least one passed-by-value struct
 ; cvCreateImage create-image takes a CvSize
 ; cvGetSubRect get-sub-rect takes a CvRect
@@ -228,6 +234,11 @@
   (depth :int)
   (channels :int))
 
+;; Releases IPL image header and data
+;; void cvReleaseImage(IplImage** image)
+(defcfun ("cvReleaseImage" %release-image) :void
+  (image :pointer))
+
 ;; Makes a new matrix from <rect> subrectangle of input array.
 ;; No data is copied
 ;; CvMat* cvGetSubRect(const CvArr* arr, CvMat* submat, CvRect rect)
@@ -285,16 +296,20 @@
     (error "convert-scale requires double-floats. (i.e. 0.0d0)"))
   (%convert-scale src dst scale shift))
 
-;; Creates an exact copy of the input matrix (except, may be,
-;; step value)
+;; Creates an exact copy of the input matrix (except, maybe, step value)
 ;; CvMat* cvCloneMat(const CvMat* mat)
 (defcfun ("cvCloneMat" clone-mat) :pointer
   (mat :pointer))
 
-;; Creates an exact copy of the input matrix (except, may be,
-;; step value)
-;; CvMat* cvCloneMat(const CvMat* mat)
+;; Creates an exact copy of the input matrix (except maybe step value)
+;; CvMat* cvCloneMatND(const CvMat* mat)
 (defcfun ("cvCloneMatND" clone-mat-nd) :pointer
+  (mat :pointer))
+
+;; Releases CvMat header and deallocates matrix data
+;; (reference counting is used for data)
+;; void cvReleaseMat(CvMat** mat)
+(defcfun ("cvReleaseMat" %release-mat) :void
   (mat :pointer))
 
 ;; Draws a rectangle given two opposite corners of the rectangle
@@ -345,11 +360,6 @@
   (thickness :int)
   (line-type :int)
   (shift :int))
-
-;; Releases IPL image header and data
-;; void cvReleaseImage(IplImage** image)
-(defcfun ("cvReleaseImage" release-image) :void
-  (image :pointer))
 
 ;; CvScalar cvScalar(double val0, double val1 CV_DEFAULT(0),
 ;;                   double val2 CV_DEFAULT(0),
@@ -423,7 +433,7 @@
 
 ;; stop capturing/reading and free resources
 ;; void cvReleaseCapture(CvCapture** capture)
-(defcfun ("cvReleaseCapture" release-capture) :void
+(defcfun ("cvReleaseCapture" %release-capture) :void
   (capture :pointer))
 
 (defmacro with-video ((name source) &body body)
@@ -438,7 +448,7 @@ resources used are released."
          ;; name is a CvCapture* necessitating this tomfoolery
          (with-foreign-object (,capture-ptr :pointer)
            (setf (mem-ref ,capture-ptr :pointer) ,name)
-           (release-capture ,capture-ptr))))))
+           (%release-capture ,capture-ptr))))))
 
 (defmacro with-window ((name size) &body body)
   (let ((window (gensym)))
@@ -523,6 +533,11 @@ resources used are released."
   (with-foreign-object (sizes-ptr :int)
     (setf (mem-ref sizes-ptr :int) sizes)
     (%create-hist dims sizes-ptr type ranges uniform)))
+
+;; Releases histogram
+;; void cvReleaseHist(CvHistogram** hist)
+(defcfun ("cvReleaseHist" %release-hist) :void
+  (hist :pointer))
 
 
 ;;;;; tracking/
