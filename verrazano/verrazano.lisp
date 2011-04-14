@@ -51,22 +51,22 @@
 
 (define-foreign-library opencv-core
   (:darwin (:or "libopencv_core.2.2.0.dylib" "libopencv_core.dylib"))
-  (:unix (:or "libcore.so.2.1.0" "libcore.so" "libopencv_core.so"))
+  (:unix (:or "libcore.so.2.1.0" "libcore.so" "libopencv_core.so" "libcv.so"))
   (t (:default "libcore")))
 
 (define-foreign-library opencv-imgproc
   (:darwin (:or "libopencv_imgproc.2.2.0.dylib" "libopencv_imgproc.dylib"))
-  (:unix (:or "libimgproc.so.2.1.0" "libimgproc.so" "libopencv_imgproc.so"))
+  (:unix (:or "libimgproc.so.2.1.0" "libimgproc.so" "libopencv_imgproc.so" "libcv.so"))
   (t (:default "libimgproc")))
 
 (define-foreign-library opencv-highgui
   (:darwin (:or "libopencv_highgui.2.2.0.dylib" "libopencv_highgui.dylib"))
-  (:unix (:or "libhighgui.so.2.1.0" "libhighgui.so" "libopencv_highgui.so"))
+  (:unix (:or "libhighgui.so.2.1.0" "libhighgui.so" "libopencv_highgui.so" "libcv.so"))
   (t (:default "libhighgui")))
 
 (define-foreign-library opencv-video
   (:darwin (:or "libopencv_video.2.2.0.dylib" "libopencv_video.dylib"))
-  (:unix (:or "libvideo.so.2.1.0" "libvideo.so" "libopencv_video.so"))
+  (:unix (:or "libvideo.so.2.1.0" "libvideo.so" "libopencv_video.so" "libcv.so"))
   (t (:default "libvideo")))
 
 (cond ((member :darwin *features*)
