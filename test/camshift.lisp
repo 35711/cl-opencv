@@ -123,22 +123,34 @@
       (%release-image image-ptr))
     (show-image window-name frame)))
 
-(defun test-tracking (&key (source 0) (quit-char #\q)
-                      (window-name "Camshift Demo"))
+(defun reset-camshift ()
+  (with-accessors ((comp comp) (track-box track-box)) *camshift-state*
+    (foreign-free comp)
+    (foreign-free track-box))
+  (with-foreign-object (hist-ptr :pointer)
+    (setf (mem-ref hist-ptr :pointer) (hist *camshift-state*))
+    (%release-hist hist-ptr))
+  (setf *camshift-state* (make-instance 'camshift-state)))
+
+(defun command-char (char &key (quit-char #\q))
+  (let ((cv-char (code-char (mod char 256))))
+    (cond ((char= quit-char cv-char) t)
+          ((char= #\n cv-char) (progn (reset-camshift) nil))
+          ((char= #\Esc cv-char) (sb-ext:quit))
+          (t nil))))
+
+(defun test-tracking (&key (source 0) (window-name "Camshift Demo"))
   (with-window (window-name +window-autosize+)
     (with-video (video source)
-      (format t "~%Keys:~%  To quit, press ~C. ~
-Click and drag with the mouse to select the object to track.~%"
-              quit-char)
+      (format t "~%Keys:~%  To return to the REPL, press 'q'. ~
+Click and drag with the mouse to select the object to track. ~
+To track a new object, press 'n'. To exit, press 'Esc'.~%")
       ;; wait-key only works when a named-window exists.
       (set-mouse-callback window-name (callback on-mouse) (null-pointer))
       (unwind-protect
-           (loop until (char= quit-char (code-char (mod (wait-key 33) 256)))
-              do (camshift-loop :window-name window-name :capture-src video))
-        (with-accessors ((comp comp) (track-box track-box)) *camshift-state*
-          (foreign-free comp)
-          (foreign-free track-box)))
-      (setf *camshift-state* (make-instance 'camshift-state)))))
+           (loop until (command-char (wait-key 33)) do
+                (camshift-loop :window-name window-name :capture-src video))
+        (reset-camshift)))))
 
 (defun show-video (&key (source 0) (quit-char #\q)
                    (window-name "OpenCV Demo"))
