@@ -55,7 +55,7 @@
   (and (plusp (third rect))
        (plusp (fourth rect))))
 
-(defun camshift-loop (&key window-name capture-src)
+(defun camshift-loop (&key widget capture-src)
   (let* ((frame (query-frame capture-src))
          (hsv (create-image (get-size frame) 8 3))
          (backproject (create-image (get-size frame) 8 1))
@@ -121,7 +121,10 @@
     (with-foreign-object (image-ptr :pointer)
       (setf (mem-ref image-ptr :pointer) hue)
       (%release-image image-ptr))
-    (show-image window-name frame)))
+    (cv-color frame frame 4) ;convert rbg to rgb
+    (pixbuf (make-instance 'gdk:pixbuf))
+    (pixbuf-get-from-image (pixbuf frame))
+    ('gdk:draw-pixbuf (drawing-area () pixbuf 0 0 0 0 -1 -1 () 0 0)) ))
 
 (defun reset-camshift ()
   (with-accessors ((comp comp) (track-box track-box)) *camshift-state*
@@ -161,26 +164,26 @@ To track a new object, press 'n'. To exit, press 'Esc'.~%")
       (loop until (char= quit-char (code-char (mod (wait-key 33) 256)))
          do (show-image window-name (query-frame video))))))
 
-(defun test-tracking-gui ()
-  (gtk:within-main-loop
-    (let ((window (make-instance 'gtk:gtk-window
-                                 :default-width 300
-                                 :default-height 300
-                                 :window-position :center
-                                 :title "Camshift"))
-          (menu-bar (make-instance 'gtk:menu-bar
-                                   :pack-direction :ltr
-                                   :child-pack-direction :ltr))
-          (camera (make-instance 'gtk:menu-item
-                                 :label "Camera"))
-          (file (make-instance 'gtk:menu-item
-                               :label "File"))
-          (source (make-instance 'gtk:menu
-                                 :attach-widget file
-                                 :attach-widget camera))
-          (track (make-instance 'gtk:menu
-                                :label "Track"))
-          (sbutton (make-instance 'gtk:button :label "Start"))
-          (pbutton (make-instance 'gtk:button :label "Pause")))
-      (gtk:container-add window menu-bar sbutton pbutton)
-      (gtk:widget-show window :all t))))
+(defun test-tracking-gtk (&key (source 0))
+(
+
+ (ql:quickload '(cl-gtk2-gtk fsbv))
+
+ (gtk:within-main-loop
+   (let ((window (make-instance 'gtk:gtk-window :title "Test Window"))
+	 (drawing-area (make-instance 'gtk:drawing-area)))
+
+     (gtk:container-add window drawing-area)
+     (gtk:widget-show drawing-area)
+
+     (gobject:g-signal-connect drawing-area "event-expose" (lambda (arg)
+							     (declare (ignore arg))
+							     (with-video (video source)
+							     (camshift-loop :widget drawing-area :capture-src video))))
+
+     (gobject:g-signal-connect window "destroy" (lambda (arg)
+						  (declare (ignore arg))
+						  (gtk-main-quit)))
+     
+
+     (gtk:widget-show window)))))
